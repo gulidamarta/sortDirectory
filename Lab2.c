@@ -108,7 +108,11 @@ void filesInDir(const char *src_dir, FileInfo **files, size_t *files_count)
         }
     }
     free(full_path);
-    closedir(curr);
+
+    if (closedir(curr) == -1)
+    {
+        printError(module_name, "Error with closing directory. ", NULL);
+    }
 }
 
 void writeFiles(FileInfo *files, size_t files_count, const char* out_dir)
@@ -118,6 +122,7 @@ void writeFiles(FileInfo *files, size_t files_count, const char* out_dir)
         printError(module_name, "Cannot get full path of file: ", out_dir);
         return;
     }
+
     strcat(out_path, "/");
     size_t out_path_len = strlen(out_path);
     for (size_t i = 0; i < files_count; ++i) {
@@ -125,17 +130,17 @@ void writeFiles(FileInfo *files, size_t files_count, const char* out_dir)
         strcat(out_path, files[i].filename);
         while (access(out_path, F_OK) != -1) {
             size_t len = strlen(out_path);
-            if (len > 3 && out_path[len - 1] == '}' && isdigit(out_path[len - 2])) {
-                char *brc_o = strrchr(out_path, '{');
+            if (len > 3 && out_path[len - 1] == ']' && isdigit(out_path[len - 2])) {
+                char *brc_o = strrchr(out_path, '[');
                 if (brc_o && brc_o < out_path + len - 2) {
                     out_path[len - 1] = 0;
                     int digit = atoi(brc_o + 1);
                     if (digit) {
-                        sprintf(++brc_o, "%d}", ++digit);
+                        sprintf(++brc_o, "%d]", ++digit);
                     }
                 }
             } else
-                strcat(out_path, "{1}");
+                strcat(out_path, "[1]");
         }
         FILE *in = fopen(files[i].path, "r");
         if (!in) {
@@ -148,6 +153,7 @@ void writeFiles(FileInfo *files, size_t files_count, const char* out_dir)
             fclose(in);
             continue;
         }
+
         char buff[BUFFER_SIZE];
         size_t bytes_read;
         while ((bytes_read = fread(buff, 1, BUFFER_SIZE, in))) {
