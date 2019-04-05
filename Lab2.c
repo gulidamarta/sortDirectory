@@ -10,6 +10,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <ctype.h>
+#include <assert.h>
+#include <limits.h>
+#include <stddef.h>
+
 
 #define BUFFER_SIZE 4096
 #define PATH_LEN 65535
@@ -22,12 +26,13 @@ typedef enum {
 
 
 typedef struct {
-    char path[PATH_LEN];
-    char filename[NAME_MAX];
+    char *path;
+    char *filename;
     off_t file_size;
 } FileInfo;
 
 char* module_name;
+
 
 void printError(const char *module_name, const char *error_msg, const char *file_name) {
     fprintf(stderr, "%s: %s %s\n", module_name,
@@ -61,6 +66,7 @@ void filesInDir(const char *src_dir, FileInfo **files, size_t *files_count)
     }
 
     char *full_path = (char*)malloc(PATH_LEN * sizeof (char));
+
     if (!full_path) {
         printError(module_name, "Cannot alloc memory for dir: ", src_dir);
         return;
@@ -75,7 +81,6 @@ void filesInDir(const char *src_dir, FileInfo **files, size_t *files_count)
     strcat(full_path, "/");
     size_t base_dir_len = strlen(full_path);
     while ((info = readdir(curr))) {
-
         full_path[base_dir_len] = 0;
         strcat(full_path, info->d_name);
         if (info->d_type == DT_DIR && strcmp(info->d_name, ".") && strcmp(info->d_name, "..")) {
@@ -102,6 +107,10 @@ void filesInDir(const char *src_dir, FileInfo **files, size_t *files_count)
 
             FileInfo *files_arr = *files;
             size_t pos = *files_count - 1;
+            
+            files_arr[pos].path = (char *)malloc(sizeof(char) * (strlen(full_path) + 1));
+            files_arr[pos].filename = (char *)malloc(sizeof(char) * (strlen(info->d_name) + 1));
+            
             strcpy(files_arr[pos].path, full_path);
             strcpy(files_arr[pos].filename, info->d_name);
             files_arr[pos].file_size = file_stat.st_size;
@@ -163,7 +172,6 @@ void writeFiles(FileInfo *files, size_t files_count, const char* out_dir)
         }
         fclose(in);
         fclose(out);
-        fflush(out);
 
     }
     free(out_path);
